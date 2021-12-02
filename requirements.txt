@@ -3,5 +3,3 @@ torchvision==0.8.2
 tqdm==4.48.2
 torchsummary
 numpy==1.19.4
-argparse
-os
