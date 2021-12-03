@@ -7,10 +7,8 @@ from KD_Loss import kd_loss
 import numpy as np
 import torch
 from torch import nn
-import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from DML_Loss import dml_loss_function
-import os
 import pdb
 
 criterion = nn.CrossEntropyLoss()
@@ -28,13 +26,7 @@ def train_regular_ce(model,
 
     device = torch.device(train_on)
     if ("cuda" in train_on) and (multiple_gpu is not None):
-        os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
-        world_size = 4
-        rank = [0,1,2,3]
-        dist.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
-        torch.cuda.set_device(rank)
-        model = DDP(model)
+        model = nn.DataParallel(model)
 
     # benchmark time
     since = time.time()
