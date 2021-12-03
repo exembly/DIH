@@ -18,13 +18,14 @@ def train_regular_ce(model,
                   dataset="cifar10",
                   epochs = 200,
                   train_on="cuda:0",
-                  multiple_gpu=None,
+                  multiple_gpu=True,
                   scheduler= None,
                   seed=3,
                   batch_size = 64):
 
     device = torch.device(train_on)
     if ("cuda" in train_on) and (multiple_gpu is not None):
+        multiple_gpu = ["cuda:0", "cuda:1", "cuda:2", "cuda:3"]
         model = nn.DataParallel(model,device_ids=multiple_gpu)
 
     # benchmark time
