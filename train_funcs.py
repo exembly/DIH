@@ -24,11 +24,9 @@ def train_regular_ce(model,
                   seed=3,
                   batch_size = 64):
 
-    #device = torch.device(train_on)
-    device = torch.device("cuda:0,1,2,3")
+    device = torch.device(train_on)
     if ("cuda" in train_on) and (multiple_gpu is not None):
-        multiple_gpu = ["cuda:0", "cuda:1", "cuda:2", "cuda:3"]
-        model = nn.DataParallel(model, device_ids=multiple_gpu)
+        model = DDP(model)
 
     # benchmark time
     since = time.time()
