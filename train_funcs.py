@@ -7,6 +7,7 @@ from KD_Loss import kd_loss
 import numpy as np
 import torch
 from torch import nn
+from torch.nn.parallel import DistributedDataParallel as DDP
 from DML_Loss import dml_loss_function
 import pdb
 
@@ -26,7 +27,7 @@ def train_regular_ce(model,
     device = torch.device(train_on)
     if ("cuda" in train_on) and (multiple_gpu is not None):
         multiple_gpu = ["cuda:0", "cuda:1", "cuda:2", "cuda:3"]
-        model = nn.DataParallel(model,device_ids=multiple_gpu)
+        model = DDP(model, device_ids=multiple_gpu)
 
     # benchmark time
     since = time.time()
