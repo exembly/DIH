@@ -10,7 +10,7 @@ def get_cifar(batch_size,
               output_width=32,
               output_height=32,
               shuffle=True,
-              num_workers=32,
+              num_workers=16,
               pin_memory=True):
 
     if cifar10_100 == "cifar10":
@@ -76,7 +76,7 @@ def get_cifar(batch_size,
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=batch_size, sampler=train_sampler,
-        num_workers=num_workers, pin_memory=pin_memory,
+        num_workers=num_workers, pin_memory=pin_memory, prefetch_factor=16
     )
 
     if cifar10_100 == "cifar100":
@@ -159,7 +159,7 @@ def get_test_loader_cifar(
 
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle,
-        num_workers=num_workers, pin_memory=pin_memory,
+        num_workers=num_workers, pin_memory=pin_memory, prefetch_factor=16
     )
 
     return data_loader
