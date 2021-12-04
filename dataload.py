@@ -10,7 +10,7 @@ def get_cifar(batch_size,
               output_width=32,
               output_height=32,
               shuffle=True,
-              num_workers=16,
+              num_workers=0,
               pin_memory=True):
 
     if cifar10_100 == "cifar10":
