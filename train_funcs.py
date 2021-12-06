@@ -83,8 +83,8 @@ def train_ddp_ce(rank, world_size, model,
             # 157 * 64 = 10048
 
             for inputs, labels in data_loader_dict[phase]: # phase = train or val
-                inputs = inputs.to(device) # torch.Size([64, 3, 32, 32])
-                labels = labels.to(device) # torch.Size([64])
+                inputs = inputs.to(rank) # torch.Size([64, 3, 32, 32])
+                labels = labels.to(rank) # torch.Size([64])
 
                 with torch.set_grad_enabled(phase == 'train'):
                     optimizer.zero_grad()
