@@ -68,7 +68,7 @@ state = {k: v for k, v in args._get_kwargs()}
 
 # Print the arguments
 for (arg,value) in state.items():
-    print(arg+" : "+str(value)+"\n"+"*"*30)
+    print(arg+" : "+str(value)+"\n")
 
 # Models for this experiment
 models_dict = {"res8": resnet8_cifar,
