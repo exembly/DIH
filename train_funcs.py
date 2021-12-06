@@ -48,10 +48,8 @@ def train_ddp_ce(rank, world_size, model,
 
     ddp_model = DDP(model, device_ids=[rank])
 
-    # dataload.py
-    data_loader_dict,dataset_sizes = get_cifar(batch_size=batch_size,   # 64
-                                                   cifar10_100=dataset) # cifar10/cifar100
-    # {'train': 50000, 'val': 10000}
+    data_loader_dict, dataset_sizes = get_cifar(batch_size=batch_size,
+                                                   cifar10_100=dataset)
 
     # copy the state to best_model_wts
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -65,12 +63,11 @@ def train_ddp_ce(rank, world_size, model,
     val_acc_dict = {}
     val_loss_dict = {}
 
-    # tqdm is for progress bar
     for epoch in tqdm(range(epochs)):
-        print('Epoch {}/{}'.format(epoch+1, epochs ))
+        print('Epoch {}/{}'.format(epoch+1, epochs))
         print('-' * 10)
 
-        for phase in ["train","val"]: #phase_list : #['train', 'val']:
+        for phase in ["train", "val"]:
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
@@ -84,6 +81,7 @@ def train_ddp_ce(rank, world_size, model,
 
             # len(data_loader_dict['val'] = 157
             # 157 * 64 = 10048
+
             for inputs, labels in data_loader_dict[phase]: # phase = train or val
                 inputs = inputs.to(device) # torch.Size([64, 3, 32, 32])
                 labels = labels.to(device) # torch.Size([64])
@@ -92,12 +90,9 @@ def train_ddp_ce(rank, world_size, model,
                     optimizer.zero_grad()
 
                     model_outputs = model(inputs)
-                    # model_outputs[0].shape
-                    # torch.Size([64, 100])
 
                     if isinstance(model_outputs, tuple):
-                        # len(preds) = 64
-                        _, preds = torch.max(model_outputs[0], 1) # preds = tensor([68, 58....
+                        _, preds = torch.max(model_outputs[0], 1)
                         loss = criterion(model_outputs[0], labels)
                     else:
                         _, preds = torch.max(model_outputs, 1)
@@ -136,21 +131,15 @@ def train_ddp_ce(rank, world_size, model,
                 val_acc_dict[(epoch + 1 )] = epoch_acc
                 val_loss_dict[(epoch + 1 )] = epoch_loss
 
-            if phase == "val" and epoch_acc > best_val_acc:
-                best_val_acc = epoch_acc
-                print('Best VAL Acc: {:4f}'.format(best_val_acc))
+                if epoch_acc > best_val_acc:
+                    best_val_acc = epoch_acc
+                    print('Best VAL Acc: {:4f}'.format(best_val_acc))
+                if previous_loss >= epoch_loss:
+                    previous_loss = epoch_loss
+                    torch.save(model.state_dict(), path_to_save)
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    print("Best VAL Loss: {:4f}".format(epoch_loss))
 
-            # deep copy the model
-            if phase == 'val' and previous_loss >= epoch_loss:
-                previous_loss = epoch_loss
-                torch.save(model.state_dict(), path_to_save)
-                best_model_wts = copy.deepcopy(model.state_dict())
-            elif phase == "val"  and previous_loss < epoch_loss:
-                print("Previous Validation Loss is smaller!")
-
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
     print('Best VAL Acc: {:4f}'.format(best_val_acc))
 
     # load best model weights

@@ -4,11 +4,7 @@ from models_repo.massive_resnets import *
 from models_repo.tiny_resnets import *
 from models_repo.Middle_Logit_Generator import *
 import argparse
-from train_funcs import train_regular_ce,\
-    train_regular_middle_logits,\
-    train_kd_or_fitnets_2,\
-    stage_1_fitnet_train,\
-    dml_train_regular
+from train_funcs import *
 from train_dih import train_via_dih
 from dih_utils import load_trained_intermediate_heads
 
@@ -119,7 +115,7 @@ if args.teacher != None:
                                                          last_epoch=-1)
 
         # train_funcs::train_regular_ce
-        train_regular_ce(model=teacher,
+        train_CE(model=teacher,
                          optimizer=optimizer,
                          epochs=args.epochs,
                          dataset=args.dataset,

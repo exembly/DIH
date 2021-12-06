@@ -45,8 +45,6 @@ def train_via_dih(student,
         torch.cuda.manual_seed_all(seed=seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    #print("REPRODUCIBLE")
-
 
     device = torch.device(device_to_train_on)
     student.to(device)
