@@ -118,17 +118,16 @@ if args.teacher != None:
                                                          gamma=args.schedule_gamma, # 'schedule_gamma': 0.2
                                                          last_epoch=-1)
 
-        # return is used for nothing
         # train_funcs::train_regular_ce
-        trained_model = train_regular_ce(model=teacher,
-                                         optimizer=optimizer,
-                                         epochs=args.epochs,
-                                         dataset=args.dataset,
-                                         train_on=args.gpu_id,
-                                         batch_size=args.batch_size,
-                                         scheduler=scheduler,
-                                         seed=args.seed,
-                                         path_to_save=args.path_to_save)
+        train_regular_ce(model=teacher,
+                         optimizer=optimizer,
+                         epochs=args.epochs,
+                         dataset=args.dataset,
+                         train_on=args.gpu_id,
+                         batch_size=args.batch_size,
+                         scheduler=scheduler,
+                         seed=args.seed,
+                         path_to_save=args.path_to_save)
 
     elif args.training_type == "fine_tune":  #Fine_Tuning the mounted intermedeiate headers
 

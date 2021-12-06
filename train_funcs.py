@@ -146,7 +146,7 @@ def train_regular_ce(model,
     model.load_state_dict(best_model_wts)
     model.eval()
 
-    return model
+    return
 
 
 
