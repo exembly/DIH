@@ -11,6 +11,7 @@ from DML_Loss import dml_loss_function
 import torch.distributed as dist
 import torch.optim as optim
 import torch.multiprocessing as mp
+import os
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 criterion = nn.CrossEntropyLoss()
@@ -33,6 +34,16 @@ def train_CE(model,
              join=True
              )
 
+def setup(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    # initialize the process group
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+def cleanup():
+    dist.destroy_process_group()
+
 def train_ddp_ce(rank, world_size, model,
                   optimizer,
                   path_to_save,
@@ -44,8 +55,10 @@ def train_ddp_ce(rank, world_size, model,
                   seed=3,
                   batch_size = 64):
 
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    print(f"Running basic DDP example on rank {rank}.")
+    setup(rank, world_size)
 
+    model = model.to(rank)
     ddp_model = DDP(model, device_ids=[rank])
 
     data_loader_dict, dataset_sizes = get_cifar(batch_size=batch_size,
@@ -145,6 +158,8 @@ def train_ddp_ce(rank, world_size, model,
     # load best model weights
     model.load_state_dict(best_model_wts)
     model.eval()
+
+    cleanup()
 
 def train_regular_ce(model,
                   optimizer,
