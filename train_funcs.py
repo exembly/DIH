@@ -7,11 +7,155 @@ from KD_Loss import kd_loss
 import numpy as np
 import torch
 from torch import nn
-from torch.nn.parallel import DistributedDataParallel as DDP
 from DML_Loss import dml_loss_function
-import pdb
+import torch.distributed as dist
+import torch.optim as optim
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 criterion = nn.CrossEntropyLoss()
+
+def train_CE(model,
+          optimizer,
+          path_to_save,
+          dataset="cifar10",
+          epochs = 200,
+          train_on="cuda:0",
+          multiple_gpu=True,
+          scheduler= None,
+          seed=3,
+          batch_size = 64):
+    world_size = 4
+    mp.spawn(train_ddp_ce,
+             args=(world_size, model, optimizer, path_to_save, dataset, epochs,
+                     train_on, multiple_gpu, scheduler, seed, batch_size),
+             nprocs=world_size,
+             join=True
+             )
+
+def train_ddp_ce(rank, world_size, model,
+                  optimizer,
+                  path_to_save,
+                  dataset="cifar10",
+                  epochs = 200,
+                  train_on="cuda:0",
+                  multiple_gpu=True,
+                  scheduler= None,
+                  seed=3,
+                  batch_size = 64):
+
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+
+    ddp_model = DDP(model, device_ids=[rank])
+
+    # dataload.py
+    data_loader_dict,dataset_sizes = get_cifar(batch_size=batch_size,   # 64
+                                                   cifar10_100=dataset) # cifar10/cifar100
+    # {'train': 50000, 'val': 10000}
+
+    # copy the state to best_model_wts
+    best_model_wts = copy.deepcopy(model.state_dict())
+
+    previous_loss = 0.0
+    best_val_acc = 0.0
+    best_train_acc = 0.0
+
+    train_acc_dict = {}
+    train_loss_dict = {}
+    val_acc_dict = {}
+    val_loss_dict = {}
+
+    # tqdm is for progress bar
+    for epoch in tqdm(range(epochs)):
+        print('Epoch {}/{}'.format(epoch+1, epochs ))
+        print('-' * 10)
+
+        for phase in ["train","val"]: #phase_list : #['train', 'val']:
+            if phase == 'train':
+                model.train()  # Set model to training mode
+            else:
+                model.eval()   # Set model to evaluate mode
+
+            running_loss = 0.0
+            running_corrects = 0
+
+            # len(data_loader_dict['train'] = 782
+            # 782 * 64 = 50048
+
+            # len(data_loader_dict['val'] = 157
+            # 157 * 64 = 10048
+            for inputs, labels in data_loader_dict[phase]: # phase = train or val
+                inputs = inputs.to(device) # torch.Size([64, 3, 32, 32])
+                labels = labels.to(device) # torch.Size([64])
+
+                with torch.set_grad_enabled(phase == 'train'):
+                    optimizer.zero_grad()
+
+                    model_outputs = model(inputs)
+                    # model_outputs[0].shape
+                    # torch.Size([64, 100])
+
+                    if isinstance(model_outputs, tuple):
+                        # len(preds) = 64
+                        _, preds = torch.max(model_outputs[0], 1) # preds = tensor([68, 58....
+                        loss = criterion(model_outputs[0], labels)
+                    else:
+                        _, preds = torch.max(model_outputs, 1)
+                        loss = criterion(model_outputs,labels)
+
+                    # backward + optimize only if in training phase
+                    if phase == 'train':
+                        loss.backward()
+                        optimizer.step()
+
+                running_loss += loss.item() * inputs.size(0)
+                running_corrects += torch.sum(preds == labels.data)
+
+            if phase == 'train' and scheduler != None:
+                scheduler.step()
+
+            epoch_loss = running_loss / dataset_sizes[phase]
+            if previous_loss == 0.0 and phase == "val":
+                previous_loss = epoch_loss
+
+            epoch_acc = running_corrects * 1.0 / dataset_sizes[phase]
+
+            if best_val_acc == 0.0 and phase == "val":
+                best_val_acc = epoch_acc
+
+            if best_train_acc == 0.0 and phase == "train":
+                best_train_acc = epoch_acc
+
+            print('{} Loss: {:.4f}  ACC: {:.4f}'.format(
+                phase, epoch_loss, epoch_acc))
+
+            if phase == "train":
+                train_acc_dict[(epochs + 1 )] = epoch_acc
+                train_loss_dict[(epoch + 1 )] = epoch_loss
+            elif phase == "val":
+                val_acc_dict[(epoch + 1 )] = epoch_acc
+                val_loss_dict[(epoch + 1 )] = epoch_loss
+
+            if phase == "val" and epoch_acc > best_val_acc:
+                best_val_acc = epoch_acc
+                print('Best VAL Acc: {:4f}'.format(best_val_acc))
+
+            # deep copy the model
+            if phase == 'val' and previous_loss >= epoch_loss:
+                previous_loss = epoch_loss
+                torch.save(model.state_dict(), path_to_save)
+                best_model_wts = copy.deepcopy(model.state_dict())
+            elif phase == "val"  and previous_loss < epoch_loss:
+                print("Previous Validation Loss is smaller!")
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60))
+    print('Best VAL Acc: {:4f}'.format(best_val_acc))
+
+    # load best model weights
+    model.load_state_dict(best_model_wts)
+    model.eval()
 
 def train_regular_ce(model,
                   optimizer,
@@ -97,14 +241,11 @@ def train_regular_ce(model,
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
 
-            # end for
-
-
             if phase == 'train' and scheduler != None:
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
-            if previous_loss == 0.0  and phase == "val":
+            if previous_loss == 0.0 and phase == "val":
                 previous_loss = epoch_loss
 
             epoch_acc = running_corrects * 1.0 / dataset_sizes[phase]
@@ -112,7 +253,7 @@ def train_regular_ce(model,
             if best_val_acc == 0.0 and phase == "val":
                 best_val_acc = epoch_acc
 
-            if best_train_acc == 0.0  and phase == "train":
+            if best_train_acc == 0.0 and phase == "train":
                 best_train_acc = epoch_acc
 
             print('{} Loss: {:.4f}  ACC: {:.4f}'.format(
@@ -145,18 +286,6 @@ def train_regular_ce(model,
     # load best model weights
     model.load_state_dict(best_model_wts)
     model.eval()
-
-    return
-
-
-
-
-
-#from defined_losses import *
-#from tqdm import tqdm
-#import copy
-#import time
-
 
 def train_regular_middle_logits(model,
                                 optimizer,
@@ -514,11 +643,6 @@ def train_kd_or_fitnets_2(student,
                          state_dict=best_model_wts)
 
 
-
-from tqdm import tqdm
-import time
-import copy
-
 hint_loss_criterion = torch.nn.MSELoss()
 
 def stage_1_fitnet_train(partial_student,
@@ -668,17 +792,6 @@ def stage_1_fitnet_train(partial_student,
         time_elapsed // 60, time_elapsed % 60))
 
     return partial_student.state_dict()
-
-
-
-
-
-
-
-
-
-
-
 
 def dml_train_regular(peers,
                       optimizers,
@@ -863,28 +976,3 @@ def dml_train_regular(peers,
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
