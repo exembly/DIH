@@ -44,7 +44,7 @@ def train_ddp_ce(rank, world_size, model,
                   seed=3,
                   batch_size = 64):
 
-    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
     ddp_model = DDP(model, device_ids=[rank])
 
