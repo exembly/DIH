@@ -210,8 +210,8 @@ def train_ddp_ce(rank, world_size, model,
             val_loss = val_running_loss / len(valid_loader)
             val_acc = val_running_corrects * 1.0 / dataset_sizes['val']
 
-            val_acc_dict[(epoch + 1 )] = epoch_acc
-            val_loss_dict[(epoch + 1 )] = epoch_loss
+            val_acc_dict[(epoch + 1 )] = val_acc
+            val_loss_dict[(epoch + 1 )] = val_loss
 
 
             if rank == 0:
