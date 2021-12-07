@@ -12,6 +12,7 @@ from torchvision import datasets,transforms
 import torch.distributed as dist
 import torch.optim as optim
 import torch.multiprocessing as mp
+import math
 import os
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -133,7 +134,7 @@ def train_ddp_ce(rank, world_size, model,
     # copy the state to best_model_wts
     best_model_wts = copy.deepcopy(model.state_dict())
 
-    previous_loss = 0.0
+    previous_loss = math.inf
     best_val_acc = 0.0
     best_train_acc = 0.0
 
@@ -215,14 +216,14 @@ def train_ddp_ce(rank, world_size, model,
 
 
             if rank == 0:
-                if epoch_acc > best_val_acc:
-                    best_val_acc = epoch_acc
+                if val_acc > best_val_acc:
+                    best_val_acc = val_acc
                     print('Best VAL Acc: {:4f}'.format(best_val_acc))
-                if previous_loss >= epoch_loss:
-                    previous_loss = epoch_loss
+                if previous_loss >= val_loss:
+                    previous_loss = val_loss
                     torch.save(model.state_dict(), path_to_save)
                     best_model_wts = copy.deepcopy(model.state_dict())
-                    print("Best VAL Loss: {:4f}".format(epoch_loss))
+                    print("Best VAL Loss: {:4f}".format(val_loss))
                     print('Best VAL Acc: {:4f}'.format(best_val_acc))
 
 
