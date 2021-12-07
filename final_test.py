@@ -63,7 +63,7 @@ def main():
 
     # Print the arguments
     for (arg,value) in state.items():
-        print(arg, " : ", value)
+        print(arg, ":", value)
 
     # Models for this experiment
     models_dict = {"res8": resnet8_cifar,
