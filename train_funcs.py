@@ -144,7 +144,7 @@ def train_ddp_ce(rank, world_size, model,
     val_loss_dict = {}
 
     for epoch in range(epochs):
-        train_sampler.set_epoch(epoch)
+        train_loader.sampler.set_epoch(epoch)
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
