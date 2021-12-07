@@ -115,7 +115,7 @@ def train_ddp_ce(rank, world_size, model,
         "val": valid_loader
     }
 
-    dataset_sizes = {"train": len(train_sampler),
+    dataset_sizes = {"train": len(train_dataset),
                      "val": len(valid_dataset)}
 
     # copy the state to best_model_wts
@@ -130,7 +130,7 @@ def train_ddp_ce(rank, world_size, model,
     val_acc_dict = {}
     val_loss_dict = {}
 
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
         train_sampler.set_epoch(epoch)
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
