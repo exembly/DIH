@@ -179,6 +179,8 @@ def train_ddp_ce(rank, world_size, model,
 
         with torch.no_grad():
             for inputs, labels in valid_loader:
+                inputs = inputs.to(rank)
+                labels = labels.to(rank)
 
                 model_outputs = model(inputs)
 
