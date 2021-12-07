@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch import nn
 from DML_Loss import dml_loss_function
+from torchvision import datasets,transforms
 import torch.distributed as dist
 import torch.optim as optim
 import torch.multiprocessing as mp
@@ -61,8 +62,62 @@ def train_ddp_ce(rank, world_size, model,
     model = model.to(rank)
     ddp_model = DDP(model, device_ids=[rank])
 
+    """
     data_loader_dict, dataset_sizes = get_cifar(batch_size=batch_size,
                                                    cifar10_100=dataset)
+    """
+
+    normalize = transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276])
+
+    train_transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ])
+
+    train_dataset = datasets.CIFAR100(
+        root="./data/", train=True,
+        download=True, transform=train_transform)
+
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset,
+                                                                    num_replicas=world_size,
+                                                                    rank=rank)
+
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=False,
+                                               num_workers=0,
+                                               pin_memory=True,
+                                               sampler=train_sampler)
+
+    normalize_valid = transforms.Normalize(mean=[0.507, 0.487, 0.441],
+                                     std=[0.267, 0.256, 0.276])
+
+    valid_transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        normalize_valid
+    ])
+
+    valid_dataset = datasets.CIFAR100(
+        root="./data/", train=False,
+        download=True, transform=valid_transform)
+
+    valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               num_workers=0,
+                                               pin_memory=True)
+
+    data_loader_dict = {
+        "train": train_loader,
+        "val": valid_loader
+    }
+
+    dataset_sizes = {"train": len(train_sampler),
+                     "val": len(valid_dataset)}
 
     # copy the state to best_model_wts
     best_model_wts = copy.deepcopy(model.state_dict())
