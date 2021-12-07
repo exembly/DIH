@@ -164,8 +164,8 @@ def train_ddp_ce(rank, world_size, model,
 
             scheduler.step()
 
-            epoch_loss = running_loss / dataset_sizes['train']
-            epoch_acc = running_corrects * 1.0 / dataset_sizes['train']
+        epoch_loss = running_loss / dataset_sizes['train']
+        epoch_acc = running_corrects * 1.0 / dataset_sizes['train']
 
         if rank == 0:
             print('Training Loss: {:.4f}  ACC: {:.4f}'.format(epoch_loss, epoch_acc))
