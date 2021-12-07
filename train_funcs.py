@@ -132,8 +132,9 @@ def train_ddp_ce(rank, world_size, model,
     val_loss_dict = {}
 
     for epoch in tqdm(range(epochs)):
-        print('Epoch {}/{}'.format(epoch+1, epochs))
-        print('-' * 10)
+        if rank == 0:
+            print('Epoch {}/{}'.format(epoch+1, epochs))
+            print('-' * 10)
 
         for phase in ["train", "val"]:
             if phase == 'train':
@@ -189,8 +190,9 @@ def train_ddp_ce(rank, world_size, model,
             if best_train_acc == 0.0 and phase == "train":
                 best_train_acc = epoch_acc
 
-            print('{} Loss: {:.4f}  ACC: {:.4f}'.format(
-                phase, epoch_loss, epoch_acc))
+            if rank == 0:
+                print('{} Loss: {:.4f}  ACC: {:.4f}'.format(
+                    phase, epoch_loss, epoch_acc))
 
             if phase == "train":
                 train_acc_dict[(epochs + 1 )] = epoch_acc
@@ -198,17 +200,16 @@ def train_ddp_ce(rank, world_size, model,
             elif phase == "val":
                 val_acc_dict[(epoch + 1 )] = epoch_acc
                 val_loss_dict[(epoch + 1 )] = epoch_loss
-
-                if epoch_acc > best_val_acc:
-                    best_val_acc = epoch_acc
-                    print('Best VAL Acc: {:4f}'.format(best_val_acc))
-                if previous_loss >= epoch_loss:
-                    previous_loss = epoch_loss
-                    torch.save(model.state_dict(), path_to_save)
-                    best_model_wts = copy.deepcopy(model.state_dict())
-                    print("Best VAL Loss: {:4f}".format(epoch_loss))
-
-    print('Best VAL Acc: {:4f}'.format(best_val_acc))
+                if rank == 0:
+                    if epoch_acc > best_val_acc:
+                        best_val_acc = epoch_acc
+                        print('Best VAL Acc: {:4f}'.format(best_val_acc))
+                    if previous_loss >= epoch_loss:
+                        previous_loss = epoch_loss
+                        torch.save(model.state_dict(), path_to_save)
+                        best_model_wts = copy.deepcopy(model.state_dict())
+                        print("Best VAL Loss: {:4f}".format(epoch_loss))
+                        print('Best VAL Acc: {:4f}'.format(best_val_acc))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
