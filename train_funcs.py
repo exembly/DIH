@@ -29,6 +29,9 @@ def train_CE(model,
           seed=3,
           batch_size = 64):
     world_size = 4
+
+    torch.backends.cudnn.enabled = False
+
     mp.spawn(train_ddp_ce,
              args=(world_size, model, optimizer, path_to_save, dataset, epochs,
                      train_on, multiple_gpu, scheduler, seed, batch_size),
@@ -123,20 +126,14 @@ def train_ddp_ce(rank, world_size, model,
                                                num_workers=0,
                                                pin_memory=True)
 
-    data_loader_dict = {
-        "train": train_loader,
-        "val": valid_loader
-    }
-
     dataset_sizes = {"train": len(train_sampler),
                      "val": len(valid_dataset)}
 
     # copy the state to best_model_wts
-    best_model_wts = copy.deepcopy(model.state_dict())
+    best_model_wts = copy.deepcopy(ddp_model.state_dict())
 
     previous_loss = math.inf
     best_val_acc = 0.0
-    best_train_acc = 0.0
 
     train_acc_dict = {}
     train_loss_dict = {}
@@ -144,7 +141,7 @@ def train_ddp_ce(rank, world_size, model,
     val_loss_dict = {}
 
     for epoch in range(epochs):
-        train_sampler.set_epoch(epoch)
+        train_loader.sampler.set_epoch(epoch)
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
