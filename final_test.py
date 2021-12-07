@@ -114,7 +114,7 @@ def main():
                                                              last_epoch=-1)
 
             # train_funcs::train_regular_ce
-            train_CE(model=teacher,
+            train_regular_ce(model=teacher,
                              optimizer=optimizer,
                              epochs=args.epochs,
                              dataset=args.dataset,
