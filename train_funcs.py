@@ -56,7 +56,6 @@ def train_ddp_ce(rank, world_size, model,
                   seed=3,
                   batch_size = 64):
 
-    print(f"Running basic DDP example on rank {rank}.")
     setup(rank, world_size)
 
     model = model.to(rank)
@@ -131,85 +130,87 @@ def train_ddp_ce(rank, world_size, model,
     val_acc_dict = {}
     val_loss_dict = {}
 
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
 
-        for phase in ["train", "val"]:
-            if phase == 'train':
-                model.train()  # Set model to training mode
+
+        model.train()  # Set model to training mode
+        running_loss = 0.0
+        running_corrects = 0
+
+
+        for inputs, labels in train_loader:
+            inputs = inputs.to(rank)
+            labels = labels.to(rank)
+
+            model_outputs = model(inputs)
+
+            if isinstance(model_outputs, tuple):
+                _, preds = torch.max(model_outputs[0], 1)
+                loss = criterion(model_outputs[0], labels)
             else:
-                model.eval()   # Set model to evaluate mode
+                _, preds = torch.max(model_outputs, 1)
+                loss = criterion(model_outputs,labels)
 
-            running_loss = 0.0
-            running_corrects = 0
+            # backward + optimize only if in training phase
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-            # len(data_loader_dict['train'] = 782
-            # 782 * 64 = 50048
+            running_loss += loss.item() * inputs.size(0)
+            running_corrects += torch.sum(preds == labels.data)
 
-            # len(data_loader_dict['val'] = 157
-            # 157 * 64 = 10048
+            scheduler.step()
 
-            for inputs, labels in data_loader_dict[phase]: # phase = train or val
-                inputs = inputs.to(rank) # torch.Size([64, 3, 32, 32])
-                labels = labels.to(rank) # torch.Size([64])
+            epoch_loss = running_loss / dataset_sizes['train']
+            epoch_acc = running_corrects * 1.0 / dataset_sizes['train']
 
-                with torch.set_grad_enabled(phase == 'train'):
-                    optimizer.zero_grad()
+        if rank == 0:
+            print('Training Loss: {:.4f}  ACC: {:.4f}'.format(epoch_loss, epoch_acc))
 
-                    model_outputs = model(inputs)
+        train_acc_dict[(epochs + 1)] = epoch_acc
+        train_loss_dict[(epoch + 1)] = epoch_loss
 
-                    if isinstance(model_outputs, tuple):
-                        _, preds = torch.max(model_outputs[0], 1)
-                        loss = criterion(model_outputs[0], labels)
-                    else:
-                        _, preds = torch.max(model_outputs, 1)
-                        loss = criterion(model_outputs,labels)
+        model.eval()  # Set model to evaluate mode
+        val_running_loss = 0.0
+        val_running_corrects = 0
 
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
+        with torch.no_grad():
+            for inputs, labels in valid_loader:
 
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                model_outputs = model(inputs)
 
-            if phase == 'train' and scheduler != None:
-                scheduler.step()
+                if isinstance(model_outputs, tuple):
+                    _, preds = torch.max(model_outputs[0], 1)
+                    loss = criterion(model_outputs[0], labels)
+                else:
+                    _, preds = torch.max(model_outputs, 1)
+                    loss = criterion(model_outputs, labels)
 
-            epoch_loss = running_loss / dataset_sizes[phase]
-            if previous_loss == 0.0 and phase == "val":
-                previous_loss = epoch_loss
+                val_running_loss += loss.item() * inputs.size(0)
+                val_running_corrects += torch.sum(preds == labels.data)
 
-            epoch_acc = running_corrects * 1.0 / dataset_sizes[phase]
+            val_loss = val_running_loss / len(valid_loader)
+            val_acc = val_running_corrects * 1.0 / dataset_sizes['val']
 
-            if best_val_acc == 0.0 and phase == "val":
-                best_val_acc = epoch_acc
+            val_acc_dict[(epoch + 1 )] = epoch_acc
+            val_loss_dict[(epoch + 1 )] = epoch_loss
 
-            if best_train_acc == 0.0 and phase == "train":
-                best_train_acc = epoch_acc
 
             if rank == 0:
-                print('{} Loss: {:.4f}  ACC: {:.4f}'.format(
-                    phase, epoch_loss, epoch_acc))
+                if epoch_acc > best_val_acc:
+                    best_val_acc = epoch_acc
+                    print('Best VAL Acc: {:4f}'.format(best_val_acc))
+                if previous_loss >= epoch_loss:
+                    previous_loss = epoch_loss
+                    torch.save(model.state_dict(), path_to_save)
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    print("Best VAL Loss: {:4f}".format(epoch_loss))
+                    print('Best VAL Acc: {:4f}'.format(best_val_acc))
 
-            if phase == "train":
-                train_acc_dict[(epochs + 1 )] = epoch_acc
-                train_loss_dict[(epoch + 1 )] = epoch_loss
-            elif phase == "val":
-                val_acc_dict[(epoch + 1 )] = epoch_acc
-                val_loss_dict[(epoch + 1 )] = epoch_loss
-                if rank == 0:
-                    if epoch_acc > best_val_acc:
-                        best_val_acc = epoch_acc
-                        print('Best VAL Acc: {:4f}'.format(best_val_acc))
-                    if previous_loss >= epoch_loss:
-                        previous_loss = epoch_loss
-                        torch.save(model.state_dict(), path_to_save)
-                        best_model_wts = copy.deepcopy(model.state_dict())
-                        print("Best VAL Loss: {:4f}".format(epoch_loss))
-                        print('Best VAL Acc: {:4f}'.format(best_val_acc))
+
 
     # load best model weights
     model.load_state_dict(best_model_wts)
