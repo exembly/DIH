@@ -61,6 +61,18 @@ def train_ddp_ce(rank, world_size, model,
     model = model.to(rank)
     ddp_model = DDP(model, device_ids=[rank])
 
+    optimizer = torch.optim.SGD(model.parameters(),
+                                lr=0.1,  # 'lr': 0.1
+                                weight_decay=0.0005,  # 'wd': 0.0005
+                                momentum=0.9,  # 'momentum': 0.9
+                                nesterov=True)  # 'nesterov': True
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                     milestones=[60, 120, 180],
+                                                     # args.schedule,  # 'schedule': [60, 120, 180]
+                                                     gamma=0.2,  # 'schedule_gamma': 0.2
+                                                     last_epoch=-1)
+
     """
     data_loader_dict, dataset_sizes = get_cifar(batch_size=batch_size,
                                                    cifar10_100=dataset)
@@ -115,7 +127,7 @@ def train_ddp_ce(rank, world_size, model,
         "val": valid_loader
     }
 
-    dataset_sizes = {"train": len(train_dataset),
+    dataset_sizes = {"train": len(train_sampler),
                      "val": len(valid_dataset)}
 
     # copy the state to best_model_wts
