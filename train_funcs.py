@@ -130,7 +130,7 @@ def train_ddp_ce(rank, world_size, model,
     val_acc_dict = {}
     val_loss_dict = {}
 
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
