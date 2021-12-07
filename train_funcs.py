@@ -59,7 +59,9 @@ def train_ddp_ce(rank, world_size, model,
 
     setup(rank, world_size)
 
+    torch.cuda.set_device(rank)
     model = model.to(rank)
+
     ddp_model = DDP(model, device_ids=[rank])
 
     optimizer = torch.optim.SGD(model.parameters(),
@@ -148,7 +150,7 @@ def train_ddp_ce(rank, world_size, model,
             print('-' * 10)
 
 
-        model.train()  # Set model to training mode
+        ddp_model.train()  # Set model to training mode
         running_loss = 0.0
         running_corrects = 0
 
@@ -157,7 +159,7 @@ def train_ddp_ce(rank, world_size, model,
             inputs = inputs.to(rank)
             labels = labels.to(rank)
 
-            model_outputs = model(inputs)
+            model_outputs = ddp_model(inputs)
 
             if isinstance(model_outputs, tuple):
                 _, preds = torch.max(model_outputs[0], 1)
@@ -185,7 +187,7 @@ def train_ddp_ce(rank, world_size, model,
         train_acc_dict[(epochs + 1)] = epoch_acc
         train_loss_dict[(epoch + 1)] = epoch_loss
 
-        model.eval()  # Set model to evaluate mode
+        ddp_model.eval()  # Set model to evaluate mode
         val_running_loss = 0.0
         val_running_corrects = 0
 
@@ -194,7 +196,7 @@ def train_ddp_ce(rank, world_size, model,
                 inputs = inputs.to(rank)
                 labels = labels.to(rank)
 
-                model_outputs = model(inputs)
+                model_outputs = ddp_model(inputs)
 
                 if isinstance(model_outputs, tuple):
                     _, preds = torch.max(model_outputs[0], 1)
@@ -219,16 +221,16 @@ def train_ddp_ce(rank, world_size, model,
                     print('Best VAL Acc: {:4f}'.format(best_val_acc))
                 if previous_loss >= val_loss:
                     previous_loss = val_loss
-                    torch.save(model.state_dict(), path_to_save)
-                    best_model_wts = copy.deepcopy(model.state_dict())
+                    torch.save(ddp_model.state_dict(), path_to_save)
+                    best_model_wts = copy.deepcopy(ddp_model.state_dict())
                     print("Best VAL Loss: {:4f}".format(val_loss))
                     print('Best VAL Acc: {:4f}'.format(best_val_acc))
 
 
 
     # load best model weights
-    model.load_state_dict(best_model_wts)
-    model.eval()
+    ddp_model.load_state_dict(best_model_wts)
+    ddp_model.eval()
 
     cleanup()
 
