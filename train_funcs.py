@@ -89,14 +89,15 @@ def train_ddp_ce(rank, world_size, model,
         root="./data/", train=True,
         download=True, transform=train_transform)
 
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
+    #train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=batch_size,
-                                               shuffle=False,
+                                               shuffle=True,
                                                num_workers=0,
                                                pin_memory=True,
-                                               sampler=train_sampler)
+                                               #sampler=train_sampler
+                                               )
 
     valid_transform = transforms.Compose([
         transforms.Resize((32, 32)),
@@ -115,7 +116,7 @@ def train_ddp_ce(rank, world_size, model,
                                                num_workers=0,
                                                pin_memory=True)
 
-    dataset_sizes = {"train": len(train_sampler),
+    dataset_sizes = {"train": len(train_loader),
                      "val": len(valid_dataset)}
 
     # copy the state to best_model_wts
@@ -130,7 +131,7 @@ def train_ddp_ce(rank, world_size, model,
     val_loss_dict = {}
 
     for epoch in range(epochs):
-        train_sampler.set_epoch(epoch)
+        #train_sampler.set_epoch(epoch)
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
