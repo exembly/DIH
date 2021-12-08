@@ -16,8 +16,6 @@ import math
 import os
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-criterion = nn.CrossEntropyLoss()
-
 def train_CE(model,
           optimizer,
           path_to_save,
@@ -61,7 +59,9 @@ def train_ddp_ce(rank, world_size, model,
     setup(rank, world_size)
 
     torch.cuda.set_device(rank)
-    model = model.to(rank)
+    model = model.cuda(rank)
+
+    criterion = nn.CrossEntropyLoss().cuda(rank)
 
     ddp_model = DDP(model, device_ids=[rank])
 
@@ -90,7 +90,7 @@ def train_ddp_ce(rank, world_size, model,
         download=True, transform=train_transform)
 
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
-    print(train_sampler.num_replicas)
+
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=batch_size,
                                                shuffle=False,
@@ -130,7 +130,7 @@ def train_ddp_ce(rank, world_size, model,
     val_loss_dict = {}
 
     for epoch in range(epochs):
-        train_loader.sampler.set_epoch(epoch)
+        train_sampler.set_epoch(epoch)
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
@@ -142,8 +142,8 @@ def train_ddp_ce(rank, world_size, model,
 
 
         for inputs, labels in train_loader:
-            inputs = inputs.to(rank)
-            labels = labels.to(rank)
+            inputs = inputs.cuda(rank)
+            labels = labels.cuda(rank)
 
             model_outputs = ddp_model(inputs)
 
@@ -179,8 +179,8 @@ def train_ddp_ce(rank, world_size, model,
 
         with torch.no_grad():
             for inputs, labels in valid_loader:
-                inputs = inputs.to(rank)
-                labels = labels.to(rank)
+                inputs = inputs.cuda(rank)
+                labels = labels.cuda(rank)
 
                 model_outputs = ddp_model(inputs)
 
