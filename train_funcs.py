@@ -28,7 +28,7 @@ def train_CE(model,
           scheduler= None,
           seed=3,
           batch_size = 64):
-    world_size = 4
+    world_size = 1
 
     mp.spawn(train_ddp_ce,
              args=(world_size, model, optimizer, path_to_save, dataset, epochs,
@@ -66,7 +66,7 @@ def train_ddp_ce(rank, world_size, model,
     ddp_model = DDP(model, device_ids=[rank])
 
     optimizer = torch.optim.SGD(model.parameters(),
-                                lr=0.1/world_size,  # 'lr': 0.1
+                                lr=0.1,  # 'lr': 0.1
                                 weight_decay=0.0005,  # 'wd': 0.0005
                                 momentum=0.9,  # 'momentum': 0.9
                                 nesterov=True)  # 'nesterov': True
