@@ -28,7 +28,7 @@ def train_CE(model,
           scheduler= None,
           seed=3,
           batch_size = 64):
-    world_size = 1
+    world_size = 4
 
     mp.spawn(train_ddp_ce,
              args=(world_size, model, optimizer, path_to_save, dataset, epochs,
@@ -77,19 +77,12 @@ def train_ddp_ce(rank, world_size, model,
                                                      gamma=0.2,  # 'schedule_gamma': 0.2
                                                      last_epoch=-1)
 
-    """
-    data_loader_dict, dataset_sizes = get_cifar(batch_size=batch_size,
-                                                   cifar10_100=dataset)
-    """
-
-    normalize = transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276])
-
     train_transform = transforms.Compose([
         transforms.Resize((32, 32)),
         transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        normalize,
+        transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276]),
     ])
 
     train_dataset = datasets.CIFAR100(
@@ -97,7 +90,7 @@ def train_ddp_ce(rank, world_size, model,
         download=True, transform=train_transform)
 
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
-
+    print(train_sampler.num_replicas)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=batch_size,
                                                shuffle=False,
@@ -105,13 +98,11 @@ def train_ddp_ce(rank, world_size, model,
                                                pin_memory=True,
                                                sampler=train_sampler)
 
-    normalize_valid = transforms.Normalize(mean=[0.507, 0.487, 0.441],
-                                     std=[0.267, 0.256, 0.276])
-
     valid_transform = transforms.Compose([
         transforms.Resize((32, 32)),
         transforms.ToTensor(),
-        normalize_valid
+        transforms.Normalize(mean=[0.507, 0.487, 0.441],
+                             std=[0.267, 0.256, 0.276])
     ])
 
     valid_dataset = datasets.CIFAR100(
