@@ -93,7 +93,7 @@ def train_ddp_ce(rank, world_size, model,
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=batch_size,
-                                               shuffle=False,
+                                               shuffle=False ,
                                                num_workers=0,
                                                pin_memory=True,
                                                sampler=train_sampler)
@@ -114,6 +114,9 @@ def train_ddp_ce(rank, world_size, model,
                                                shuffle=True,
                                                num_workers=0,
                                                pin_memory=True)
+
+    print(len(train_loader))
+    print(len(train_sampler))
 
     dataset_sizes = {"train": len(train_sampler),
                      "val": len(valid_dataset)}
