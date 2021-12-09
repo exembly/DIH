@@ -206,7 +206,7 @@ def train_ddp_ce(rank, world_size, model,
             if rank == 0:
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
-                    print('Best VAL Acc: {:4f}'.format(best_val_acc))
+                    print('New Best VAL Acc: {:4f}'.format(best_val_acc))
                 if previous_loss >= val_loss:
                     previous_loss = val_loss
                     torch.save(ddp_model.state_dict(), path_to_save)
