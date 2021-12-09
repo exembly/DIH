@@ -118,7 +118,7 @@ def train_ddp_ce(rank, world_size, model,
     print(len(train_loader))
     print(len(train_sampler))
 
-    dataset_sizes = {"train": len(train_sampler),
+    dataset_sizes = {"train": len(train_dataset),
                      "val": len(valid_dataset)}
 
     # copy the state to best_model_wts
