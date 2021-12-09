@@ -249,7 +249,7 @@ def train_regular_ce(model,
                                                    cifar10_100=dataset) # cifar10/cifar100
     # {'train': 50000, 'val': 10000}
 
-    print(data_loader_dict['train'])
+    print(dataset_sizes['train'])
 
     # copy the state to best_model_wts
     best_model_wts = copy.deepcopy(model.state_dict())
