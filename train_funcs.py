@@ -96,7 +96,8 @@ def train_ddp_ce(rank, world_size, model,
                                                shuffle=False,
                                                num_workers=0,
                                                pin_memory=True,
-                                               sampler=train_sampler)
+                                               #sampler=train_sampler
+                                               )
 
     valid_transform = transforms.Compose([
         transforms.Resize((32, 32)),
@@ -115,7 +116,7 @@ def train_ddp_ce(rank, world_size, model,
                                                num_workers=0,
                                                pin_memory=True)
 
-    dataset_sizes = {"train": len(train_sampler),
+    dataset_sizes = {"train": len(train_dataset),
                      "val": len(valid_dataset)}
 
     print(dataset_sizes['train'])
