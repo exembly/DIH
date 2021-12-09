@@ -236,6 +236,7 @@ def train_regular_ce(model,
     device = torch.device(train_on)
     if ("cuda" in train_on) and (multiple_gpu is not None):
         model = nn.DataParallel(model)
+        criterion = nn.CrossEntropyLoss().cuda(device)
 
     # benchmark time
     since = time.time()
