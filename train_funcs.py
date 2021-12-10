@@ -61,7 +61,7 @@ def train_ddp_ce(rank, world_size, model,
     ddp_model = DDP(model, device_ids=[rank])
 
     optimizer = torch.optim.SGD(ddp_model.parameters(),
-                                lr=0.1,  # 'lr': 0.1
+                                lr=0.1*world_size,  # 'lr': 0.1
                                 weight_decay=0.0005,  # 'wd': 0.0005
                                 momentum=0.9,  # 'momentum': 0.9
                                 nesterov=True)  # 'nesterov': True
