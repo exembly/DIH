@@ -35,16 +35,6 @@ def train_CE(model,
              join=True
              )
 
-def setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-
-    # initialize the process group
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-
-def cleanup():
-    dist.destroy_process_group()
-
 def train_ddp_ce(rank, world_size, model,
                   optimizer,
                   path_to_save,
@@ -56,12 +46,17 @@ def train_ddp_ce(rank, world_size, model,
                   seed=3,
                   batch_size = 64):
 
-    setup(rank, world_size)
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
 
-    torch.cuda.set_device(rank)
+    # initialize the process group
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+    #torch.cuda.set_device(rank)
+
     model = model.cuda(rank)
 
-    criterion = nn.CrossEntropyLoss().cuda(rank)
+    criterion = nn.CrossEntropyLoss()
 
     ddp_model = DDP(model, device_ids=[rank])
 
@@ -96,7 +91,7 @@ def train_ddp_ce(rank, world_size, model,
                                                shuffle=False,
                                                num_workers=0,
                                                pin_memory=True,
-                                               #sampler=train_sampler
+                                               sampler=train_sampler
                                                )
 
     valid_transform = transforms.Compose([
@@ -116,7 +111,7 @@ def train_ddp_ce(rank, world_size, model,
                                                num_workers=0,
                                                pin_memory=True)
 
-    dataset_sizes = {"train": len(train_dataset),
+    dataset_sizes = {"train": len(train_sampler),
                      "val": len(valid_dataset)}
 
     print(dataset_sizes['train'])
@@ -221,7 +216,7 @@ def train_ddp_ce(rank, world_size, model,
     ddp_model.load_state_dict(best_model_wts)
     ddp_model.eval()
 
-    cleanup()
+    dist.destroy_process_group()
 
 def train_regular_ce(model,
                   optimizer,
