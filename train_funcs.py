@@ -127,7 +127,8 @@ def train_ddp_ce(rank, world_size, model,
     val_acc_dict = {}
     val_loss_dict = {}
 
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
+        since = time.time()
         train_sampler.set_epoch(epoch)
         if rank == 0:
             print('Epoch {}/{}'.format(epoch+1, epochs))
@@ -209,6 +210,8 @@ def train_ddp_ce(rank, world_size, model,
                     best_model_wts = copy.deepcopy(ddp_model.state_dict())
                     print("Best VAL Loss: {:4f}".format(val_loss))
                     print('Best VAL Acc: {:4f}'.format(best_val_acc))
+        time_elapsed = time.time() - since
+        print("Epoch Time:", time_elapsed)
 
 
 
