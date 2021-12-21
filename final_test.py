@@ -9,6 +9,7 @@ from train_dih import train_via_dih
 from dih_utils import load_trained_intermediate_heads
 
 def main():
+    # TODO: add the ability to load from a config file
     parser = argparse.ArgumentParser()
     #General training setting
     parser.add_argument('--training_type', default='dih', type=str,
@@ -17,7 +18,7 @@ def main():
     parser.add_argument('--epochs', default=240, type=int, help='Input the number of epochs: default(240)')
     parser.add_argument('--momentum', default=0.9, type=float, help='Input the momentum: default(0.9)')
     parser.add_argument('--nesterov', default=True)
-    parser.add_argument('--no-nesterov', action='store_false', dest='nesterov', help='Disable Nesterov: default(True)')
+    parser.add_argument('--no-nesterov', action='store_false', dest='nesterov', help='Disable Nesterov: default(False)')
     parser.add_argument('--batch_size', default=128, type=int, help='Input the batch size: default(128)')
     parser.add_argument('--lr', default=0.05, type=float, help='Input the learning rate: default(0.05)')
     parser.add_argument('--wd', default=5e-4, type=float, help='Input the weight decay rate: default(5e-4)')
@@ -93,6 +94,9 @@ def main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+    # TODO: add automation features to run many tests repeatedly
+    # TODO: add logging for automation and results
+    # TODO: add seperate final test phase on test set (changes to train funcs and dataloader also required)
     # Regular Cross-entrophy (no distillation)
     # args.teacher = teacher architecture (res8, res110...)
     if args.teacher != None:
